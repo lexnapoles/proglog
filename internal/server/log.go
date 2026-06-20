@@ -32,8 +32,8 @@ func (c *Log) Read(offset uint64) (Record, error) {
 }
 
 type Record struct {
-	Value  []byte `json: "value"`
-	Offset uint64 `json: "offset"`
+	Value  []byte `json:"value"`
+	Offset uint64 `json:"offset"`
 }
 
 var ErrOffsetNotFound = fmt.Errorf("offset not found")
