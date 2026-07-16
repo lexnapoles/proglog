@@ -131,7 +131,7 @@ func (l *Log) Read(off uint64) (*api.Record, error) {
 
 func (l *Log) Close() error {
 	l.mu.Lock()
-	defer l.mu.Lock()
+	defer l.mu.Unlock()
 
 	for _, segment := range l.segments {
 		if err := segment.Close(); err != nil {
