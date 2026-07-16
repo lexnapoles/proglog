@@ -9,10 +9,9 @@ import (
 )
 
 func TestIndex(t *testing.T) {
-	f, err := os.CreateTemp(os.TempDir(), "index_test")
+	f, err := os.CreateTemp(t.TempDir(), "index_test")
 
 	require.NoError(t, err)
-	defer os.Remove((f.Name()))
 
 	c := Config{}
 	c.Segment.MaxIndexBytes = 1024
@@ -44,10 +43,12 @@ func TestIndex(t *testing.T) {
 	// index and scanner should error when reading past existing entries
 	_, _, err = idx.Read(int64(len(entries)))
 	require.Equal(t, io.EOF, err)
-	_ = idx.Close()
+	require.NoError(t, idx.Close())
 
 	// index should build its state from the existing file
-	f, _ = os.OpenFile(f.Name(), os.O_RDWR, 0600)
+	f, err = os.OpenFile(f.Name(), os.O_RDWR, 0)
+	require.NoError(t, err)
+
 	idx, err = newIndex(f, c)
 	require.NoError(t, err)
 
@@ -55,4 +56,5 @@ func TestIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint32(entries[1].Off), off)
 	require.Equal(t, entries[1].Pos, pos)
+	require.NoError(t, idx.Close())
 }
