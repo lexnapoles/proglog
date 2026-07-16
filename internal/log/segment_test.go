@@ -2,7 +2,6 @@ package log
 
 import (
 	"io"
-	"os"
 	"testing"
 
 	api "github.com/lexnapoles/proglog/api/v1"
@@ -10,8 +9,7 @@ import (
 )
 
 func TestSegment(t *testing.T) {
-	dir, _ := os.MkdirTemp("", "segment-test")
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	want := &api.Record{Value: []byte("hello world")}
 
@@ -21,6 +19,7 @@ func TestSegment(t *testing.T) {
 	c.Segment.MaxIndexBytes = entWidth * 3
 
 	s, err := newSegment(dir, 16, c)
+
 	require.NoError(t, err)
 	require.Equal(t, uint64(16), s.nextOffset)
 	require.False(t, s.IsMaxed())
@@ -41,6 +40,8 @@ func TestSegment(t *testing.T) {
 	// maxed index
 	require.True(t, s.IsMaxed())
 
+	require.NoError(t, s.Close())
+
 	c.Segment.MaxStoreBytes = uint64(len(want.Value) * 3)
 	c.Segment.MaxIndexBytes = 1024
 
@@ -52,6 +53,12 @@ func TestSegment(t *testing.T) {
 	err = s.Remove()
 	require.NoError(t, err)
 	s, err = newSegment(dir, 16, c)
+
 	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+
 	require.False(t, s.IsMaxed())
 }
