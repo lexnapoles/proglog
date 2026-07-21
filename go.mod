@@ -11,6 +11,10 @@ require (
 )
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
+	github.com/casbin/casbin/v3 v3.10.0 // indirect
+	github.com/casbin/govaluate v1.3.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
