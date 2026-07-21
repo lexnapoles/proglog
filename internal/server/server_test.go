@@ -15,7 +15,8 @@ import (
 )
 
 func setupTest(t *testing.T, fn func(*Config)) (
-	client api.LogClient,
+	rootClient api.LogClient,
+	nobodyClient api.LogClient,
 	cfg *Config,
 	teardown func(),
 ) {
@@ -24,15 +25,35 @@ func setupTest(t *testing.T, fn func(*Config)) (
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	clientTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{CAFile: config.CAFile})
-	require.NoError(t, err)
+	newClient := func(crtPath, keyPath string) (*grpc.ClientConn,
+		api.LogClient, []grpc.DialOption) {
 
-	clientCreds := credentials.NewTLS(clientTLSConfig)
+		tlsConfig, err := config.SetupTLSConfig(config.TLSConfig{
+			CertFile: crtPath,
+			KeyFile:  keyPath,
+			CAFile:   config.CAFile,
+			Server:   false,
+		})
 
-	clientOptions := []grpc.DialOption{grpc.WithTransportCredentials(clientCreds)}
+		require.NoError(t, err)
 
-	cc, err := grpc.NewClient(l.Addr().String(), clientOptions...)
-	require.NoError(t, err)
+		tlsCreds := credentials.NewTLS(tlsConfig)
+		opts := []grpc.DialOption{grpc.WithTransportCredentials(tlsCreds)}
+		conn, err := grpc.NewClient(l.Addr().String(), opts...)
+		require.NoError(t, err)
+
+		client := api.NewLogClient(conn)
+
+		return conn, client, opts
+	}
+
+	rootConn, rootClient, _ := newClient(
+		config.RootClientCertFile,
+		config.RootClientKeyFile)
+
+	nobodyConn, nobodyClient, _ := newClient(
+		config.NobodyClientCertFile,
+		config.NobodyClientKeyFile)
 
 	dir := t.TempDir()
 	require.NoError(t, err)
@@ -66,18 +87,17 @@ func setupTest(t *testing.T, fn func(*Config)) (
 		server.Serve(l)
 	}()
 
-	client = api.NewLogClient(cc)
-
-	return client, cfg, func() {
+	return rootClient, nobodyClient, cfg, func() {
 		server.Stop()
-		cc.Close()
+		rootConn.Close()
+		nobodyConn.Close()
 		l.Close()
 		clog.Remove()
 	}
 }
 
 func TestProduceConsume(t *testing.T) {
-	client, _, teardown := setupTest(t, nil)
+	client, _, _, teardown := setupTest(t, nil)
 	t.Cleanup(teardown)
 
 	ctx := context.Background()
@@ -100,7 +120,7 @@ func TestProduceConsume(t *testing.T) {
 }
 
 func TestConsumePastBoundary(t *testing.T) {
-	client, _, teardown := setupTest(t, nil)
+	client, _, _, teardown := setupTest(t, nil)
 	t.Cleanup(teardown)
 
 	ctx := context.Background()
@@ -130,7 +150,7 @@ func TestConsumePastBoundary(t *testing.T) {
 }
 
 func TestProduceConsumeStream(t *testing.T) {
-	client, _, teardown := setupTest(t, nil)
+	client, _, _, teardown := setupTest(t, nil)
 	t.Cleanup(teardown)
 
 	ctx := context.Background()

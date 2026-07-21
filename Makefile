@@ -1,7 +1,13 @@
-CONFIG_PATH=${HOME}/projects/proglog/
+CONFIG_PATH=${HOME}/projects/proglog
+
+$(CONFIG_PATH)/model.conf:
+	cp test/model.conf $(CONFIG_PATH)/model.conf
+
+
+$(CONFIG_PATH)/policy.csv:
+	cp test/policy.csv $(CONFIG_PATH)/policy.csv
 
 .PHONY: init
-
 init:
 	mkdir -p ${CONFIG_PATH}
 
@@ -42,5 +48,5 @@ compile:
 
 
 .PHONY: test
-test:
+test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
 	go test -race ./...
